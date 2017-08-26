@@ -1,0 +1,19 @@
+{
+  "name": "amusement-api",
+  "version": "1.0.0",
+  "description": "API server for amusement club project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NoxCaos/amusement-api.git"
+  },
+  "author": "NoxCaos",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NoxCaos/amusement-api/issues"
+  },
+  "homepage": "https://github.com/NoxCaos/amusement-api#readme"
+}
