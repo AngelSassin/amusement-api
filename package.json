@@ -15,5 +15,11 @@
   "bugs": {
     "url": "https://github.com/NoxCaos/amusement-api/issues"
   },
-  "homepage": "https://github.com/NoxCaos/amusement-api#readme"
+  "homepage": "https://github.com/NoxCaos/amusement-api#readme",
+  "dependencies": {
+    "express": "^4.16.2",
+    "js-levenshtein": "^1.1.3",
+    "lodash": "^4.17.4",
+    "mongodb": "^2.2.33"
+  }
 }
