@@ -1,5 +1,7 @@
 module.exports = {
-    connect, getUser, claim, pay, findCard, daily, award, getUserApi, balance, whohas
+    connect, getUser, getUserApi, findCard, getCards,
+    claim, daily, balance,
+    award, whohas
 }
 
 const constants = require("../settings/const");
@@ -198,9 +200,8 @@ function claim(discordID, amount) {
     //return new Promise((fulfill, reject) => {
     return getUser(discordID).then(dbUser => {
         return new Promise((fulfill, reject) => {
-            let stat = dbUser.dailystats;
+            let stat = dbUser.dailystats || {summon:0, send: 0, claim: 0, quests: 0};
             let claimCost = (stat.claim + 1) * constants.claim_incr;
-            if(!stat) stat = {summon:0, send: 0, claim: 0, quests: 0};
             let resp = {
                 claimCost: claimCost,
                 nextClaim: claimCost + constants.claim_incr,

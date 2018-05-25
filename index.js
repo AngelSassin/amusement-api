@@ -34,7 +34,7 @@ app.get('/', (req, resp) => {
 
 app.get('/user', (req, resp) => {
     let p = req.query;
-    console.log('GET /user ' + p.uid);
+    console.log('GET /user ' + JSON.stringify(p).uid);
     userManager.getUserApi(p.uid).then(u => {
         resp.send(u);
     }).catch(e => resp.send(f.error(e)));
@@ -42,15 +42,15 @@ app.get('/user', (req, resp) => {
 
 app.get('/user/claim', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/claim ' + p);
-    userManager.claim(p.uid. p.amount).then((obj) => {
+    console.log('GET /user/claim ' + JSON.stringify(p).uid);
+    userManager.claim(p.uid, p.amount).then((obj) => {
         resp.send(obj);
     }).catch(e => resp.send(f.error(e)));
 });
 
 app.get('/user/pay', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/pay ' + p);
+    console.log('GET /user/pay ' + JSON.stringify(p));
     userManager.pay(p.uid, p.toid, p.amount).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -58,7 +58,7 @@ app.get('/user/pay', (req, resp) => {
 
 app.get('/user/whohas', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/whohas ' + p);
+    console.log('GET /user/whohas ' + JSON.stringify(p));
     userManager.whohas(p.uid, p.card).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -66,7 +66,7 @@ app.get('/user/whohas', (req, resp) => {
 
 app.get('/user/daily', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/daily ' + p);
+    console.log('GET /user/daily ' + JSON.stringify(p));
     userManager.daily(p.uid).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -74,7 +74,7 @@ app.get('/user/daily', (req, resp) => {
 
 app.get('/user/bal', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/bal ' + p);
+    console.log('GET /user/bal ' + JSON.stringify(p));
     userManager.balance(p.uid, p.amount).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -82,7 +82,7 @@ app.get('/user/bal', (req, resp) => {
 
 app.get('/user/award', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/award ' + p);
+    console.log('GET /user/award ' + JSON.stringify(p));
     userManager.award(p.uid, p.amount).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -90,15 +90,24 @@ app.get('/user/award', (req, resp) => {
 
 app.get('/user/card', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/card ' + p);
+    console.log('GET /user/card ' + JSON.stringify(p));
     userManager.findCard(p.uid, p.card).then((obj) => {
+        resp.send(obj);
+    }).catch(e => {resp.send(f.error(e)); console.log(e)});
+});
+
+app.get('/user/cards', (req, resp) => {
+    console.log(req);
+    let p = req.query;
+    console.log('GET /user/cards ' + JSON.stringify(p));
+    userManager.getCards(p.uid).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
 });
 
 app.get('/user/update', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/update ' + p);
+    console.log('GET /user/update ' + JSON.stringify(p));
     userManager.updateName(p.uid, p.name).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -106,7 +115,7 @@ app.get('/user/update', (req, resp) => {
 
 app.get('/card/summon', (req, resp) => {
     let p = req.query;
-    console.log('GET /card/summon ' + p);
+    console.log('GET /card/summon ' + JSON.stringify(p));
     cardManager.summon(p.uid, p.card).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -114,7 +123,7 @@ app.get('/card/summon', (req, resp) => {
 
 app.get('/card/diff', (req, resp) => {
     let p = req.query;
-    console.log('GET /card/diff ' + p);
+    console.log('GET /card/diff ' + JSON.stringify(p));
     cardManager.difference(p.uid, p.toid, p.card).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -122,7 +131,7 @@ app.get('/card/diff', (req, resp) => {
 
 app.get('/card/sell', (req, resp) => {
     let p = req.query;
-    console.log('GET /card/sell ' + p);
+    console.log('GET /card/sell ' + JSON.stringify(p));
     cardManager.sell(p.uid, p.card).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
@@ -130,7 +139,7 @@ app.get('/card/sell', (req, resp) => {
 
 app.get('/card/send', (req, resp) => {
     let p = req.query;
-    console.log('GET /card/send ' + p);
+    console.log('GET /card/send ' + JSON.stringify(p));
     cardManager.transfer(p.uid, p.toid, p.card).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});

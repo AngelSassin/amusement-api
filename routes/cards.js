@@ -14,6 +14,26 @@ function connect(connection) {
     ccollection = mongodb.collection('cards');
 }
 
+function getUserCards(userID, query) {
+    return ucollection.aggregate([
+        {"$match":{"discord_id":userID}},
+        {"$unwind":"$cards"},
+        {"$match":query},
+        {"$group": {
+            _id: {
+                discord_id: "$discord_id", 
+                username: "$username", 
+                dailystats: "$dailystats",
+                exp: "$exp",
+                quests: "$quests",
+                gets: "$gets",
+                sends: "$sends"
+            }, 
+            cards: {"$push": "$cards"}}
+        }
+    ]);
+}
+
 function difference(discordID1, discordID2, filters) {
     return new Promise((fulfill, reject) => {
         userModule.getUser(discordID1).then(dbUser1 => {
@@ -38,28 +58,26 @@ function difference(discordID1, discordID2, filters) {
     });
 }
 
-function summon(discordID, cardName) {
-    return new Promise((fulfill, reject) => {
-        userModule.getUser(discordID).then(dbUser => {
-            let check = cardName.toLowerCase().replace(/ /g, "_");
-            if(!dbUser.cards) { fulfill(f.respFail('CARD_NONE')); return; }
+function summon(discordID, args) {
+    return new Promise(async (fulfill, reject) => {
+        let query = utils.getRequestFromFilters(args);
+        
+        let objs = await (await getUserCards(discordID, query)).toArray();
+        if(!objs[0]) return fulfill(f.respFail('CARD_NOMATCH'));
+        
+        let cards = objs[0].cards;
+        let dbUser = objs[0]._id;
+        let match = query['cards.name']? utils.getBestCardSorted(cards, query['cards.name']) : utils.getRandomCard(cards);
+        if(!match) return callback(utils.formatError(user, "Can't find card", "can't find card matching that request"));
 
-            let match = utils.getBestCardSorted(dbUser.cards, check)[0];
-            if(match){
-                let stat = dbUser.dailystats;
+        let stat = dbUser.dailystats;
+        if(!stat) stat = {summon:0, send: 0, claim: 0, quests: 0};
+        stat.summon++;
 
-                if(!stat) stat = {summon:0, send: 0, claim: 0, quests: 0};
-                stat.summon++;
-
-                //heroes.addXP(dbUser, .1);
-                ucollection.update(
-                    { discord_id: dbUser.id }, {$set: {dailystats: stat}}
-                ).then((e) => {
-                    fulfill(f.respPass(match));
-                    //quest.checkSummon(dbUser, (mes)=>{callback(mes)});
-                });
-            } else fulfill(f.respFail('CARD_NOMATCH'));
-        }).catch(e => reject(e));
+        //heroes.addXP(dbUser, .1);
+        await ucollection.update({ discord_id: dbUser.id }, {$set: {dailystats: stat}});
+        fulfill(f.respPass(cards[0]));
+        //quest.checkSummon(dbUser, (mes)=>{callback(mes)});
     });
 }
 

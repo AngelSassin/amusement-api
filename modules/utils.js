@@ -11,7 +11,11 @@ module.exports = {
     getFullTimeDifference,
     getCardFile,
     getBestCardSorted,
-    countCardLevels
+    getRandomCard,
+    countCardLevels,
+    getRequestFromFilters,
+    getRequestFromFiltersNoPrefix,
+    getRequestFromFiltersWithPrefix,
 }
 
 const config = require("../settings/conf");
@@ -92,23 +96,125 @@ function getCardFile(card) {
     return config.cards + card.collection + '/' + prefix + "_" + card.name + ext;
 }
 
-function getBestCardSorted(cards, name) {
-    let filtered = cards.filter(c => _.includes(c.name.toLowerCase(), name));
+function getRequestFromFiltersWithPrefix(args, prefix) {
+    prefix = prefix || "";
+    let query = {};
+    let keywords = [];
+    let levelInclude = [];
+    let levelExclude = [];
+    let collectionInclude = [];
+    let collectionExclude = [];
+
+    if(!args || args.length == 0) return {};
+    if(!Array.isArray(args)) args = [args];
+    args.forEach(element => {
+        element = element.trim();
+        if(isInt(element) && parseInt(element) <= 5 && parseInt(element) > 0)
+            levelInclude.push(parseInt(element));
+
+        else if(element[0] == '-') {
+            let el = element.substr(1);
+            if(el === "craft") query[prefix + 'craft'] = true; 
+            else if(el === "multi") query[prefix + 'amount'] = {$gte: 2};
+            else if(el === "gif") query[prefix + 'animated'] = true;
+            else if(el === "fav") query[prefix + 'fav'] = true;
+            else if(el === "frozen") {
+                var yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                query[prefix + 'frozen'] = {$gte: yesterday};
+            }
+            else {
+                col = collections.parseCollection(el);
+                col.map(c => collectionInclude.push(c.id));
+            }
+        }
+        else if(element[0] == '!') {
+            let el = element.substr(1);
+            if(isInt(el) && parseInt(el) <= 5 && parseInt(el) > 0)
+                levelExclude.push(parseInt(el));
+            if(el === "craft") query[prefix + 'craft'] = false; 
+            else if(el === "multi") query[prefix + 'amount'] = {$eq: 1};
+            else if(el === "gif") query[prefix + 'animated'] = false;
+            else if(el === "fav") query[prefix + 'fav'] = {$in: [null, false]};
+            else if(el === "frozen") {
+                var yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                query[prefix + 'frozen'] = {$lte: yesterday};
+            }
+            else {
+                col = collections.parseCollection(el);
+                col.map(c => collectionExclude.push(c.id));
+            }
+
+        } else keywords.push(element.trim());
+    }, this);
+    if(levelExclude.length > 0 || levelInclude.length > 0) {
+        query[prefix + 'level'] = {};
+        if(levelExclude.length > 0) {
+            query[prefix + 'level'].$nin = levelExclude;
+        }
+        if(levelInclude.length > 0) {
+            query[prefix + 'level'].$in = levelInclude;
+        }
+    }
+    
+    if(collectionExclude.length > 0 || collectionInclude.length > 0) {
+        query[prefix + 'collection'] = {};
+        if(collectionExclude.length > 0) {
+            query[prefix + 'collection'].$nin = collectionExclude;
+        }
+        if(collectionInclude.length > 0) {
+            query[prefix + 'collection'].$in = collectionInclude;
+        }
+    }
+
+    if(keywords.length > 0) {
+        let keywordString = keywords.join('_').replace(/\\/g, '');
+        query[prefix + 'name'] = new RegExp("(_|^)" + keywordString, 'ig');
+    } 
+
+    return query;
+}
+
+function getRequestFromFilters(args) {
+    return getRequestFromFiltersWithPrefix(args, "cards.");
+}
+
+function getRequestFromFiltersNoPrefix(args) {
+    return getRequestFromFiltersWithPrefix(args, "");
+}
+
+function getBestCardSorted(cards, n) {
+    if(cards.length == 0) return [];
+    
+    let name;
+    if(n instanceof RegExp) 
+        name = n.toString().split('/')[1].replace('(_|^)', '').replace(/\?/g, '');
+    else name = n.replace(' ', '_');
+
+    let filtered = cards.filter(c => c.name.toLowerCase().includes(name));
     filtered.sort((a, b) => {
-        let dist1 = lev(a, name);
-        let dist2 = lev(b, name);
-        if(dist1 < dist2) return 1;
-        if(dist1 > dist2) return -1;
+        let dist1 = lev(a.name, name);
+        let dist2 = lev(b.name, name);
+        if(dist1 < dist2) return -1;
+        if(dist1 > dist2) return 1;
         else return 0;
     });
 
-    var re = new RegExp('^' + name);
-    let supermatch = filtered.filter(c => re.exec(c.name.toLowerCase()));
-    if(supermatch.length > 0) { 
-        let left = filtered.filter(c => !supermatch.includes(c));
-        return supermatch.concat(left);
+    if(filtered.length > 0) {
+        name = name.replace(/\\/g, '');
+        var re = new RegExp('^' + name);
+        let supermatch = filtered.filter(c => re.exec(c.name.toLowerCase()));
+        if(supermatch.length > 0) { 
+            let left = filtered.filter(c => !supermatch.includes(c));
+            return supermatch.concat(left);
+        }
     }
     return filtered;
+}
+
+function getRandomCard(cards) {
+    return cards[Math.floor(Math.random()*cards.length)];
 }
 
 function countCardLevels(cards) {
