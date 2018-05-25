@@ -34,7 +34,7 @@ app.get('/', (req, resp) => {
 
 app.get('/user', (req, resp) => {
     let p = req.query;
-    console.log('GET /user ' + JSON.stringify(p).uid);
+    console.log('GET /user ' + p.uid);
     userManager.getUserApi(p.uid).then(u => {
         resp.send(u);
     }).catch(e => resp.send(f.error(e)));
@@ -42,8 +42,8 @@ app.get('/user', (req, resp) => {
 
 app.get('/user/claim', (req, resp) => {
     let p = req.query;
-    console.log('GET /user/claim ' + JSON.stringify(p).uid);
-    userManager.claim(p.uid, p.amount).then((obj) => {
+    console.log('GET /user/claim ' + JSON.stringify(p));
+    userManager.claim(p.uid, p.amount, p.any, p.promo).then((obj) => {
         resp.send(obj);
     }).catch(e => resp.send(f.error(e)));
 });

@@ -4,6 +4,7 @@ module.exports = {
     award, whohas
 }
 
+const cardModule = require('./cards');
 const constants = require("../settings/const");
 const config = require("../settings/conf");
 const guilds = require('../settings/guilds');
@@ -20,6 +21,16 @@ function connect(connection) {
     ccollection = mongodb.collection('cards');
 }
 
+function getClaimsCost(claims, amount) {
+    let total = 0;
+    for (var i = 0; i < amount; i++) {
+        claims++;
+        total += claims * constants.claim_incr;
+        //total += heroes.getHeroEffect(dbUser, 'claim_akari', claims * constants.claim_incr);
+    }
+    return total;
+}
+
 function getUser(discordID) {
     return new Promise((fulfill, reject) => {
         if(!discordID) reject({ message: "Invalid user ID"});
@@ -30,7 +41,10 @@ function getUser(discordID) {
                     { $set: { 
                         discord_id: discordID,
                         username: "",
-                        exp: 300
+                        cards: [],
+                        exp: 2000,
+                        gets: 50,
+                        sends: 50
                     }}, { upsert: true }
                 ).then(u => { fulfill(user); });
             } else fulfill(user);
@@ -196,52 +210,64 @@ function whohas(discordID, cardName) {
     });
 }
 
-function claim(discordID, amount) {
-    //return new Promise((fulfill, reject) => {
-    return getUser(discordID).then(dbUser => {
-        return new Promise((fulfill, reject) => {
-            let stat = dbUser.dailystats || {summon:0, send: 0, claim: 0, quests: 0};
-            let claimCost = (stat.claim + 1) * constants.claim_incr;
-            let resp = {
-                claimCost: claimCost,
-                nextClaim: claimCost + constants.claim_incr,
-                bal: Math.round(dbUser.exp),
-                newCard: true
-            }
+async function claim(discordID, amount, any, promo) {
+    if(!amount) amount = 1;
+    amount = parseInt(amount);
+    let dbUser = await getUser(discordID);
+    
+    let stat = dbUser.dailystats || {summon:0, send: 0, claim: 0, quests: 0};
+    let claimCost = getClaimsCost(stat.claim, amount);
+    let resp = {
+        claimCost: claimCost,
+        nextClaim: getClaimsCost(stat.claim, amount + 1) - claimCost,
+        bal: Math.round(dbUser.exp)
+    }
+    
+    //claimCost = heroes.getHeroEffect(dbUser, 'claim_akari', claimCost);
+    if(dbUser.exp < resp.claimCost) return f.respFail('TOMATO_NONE');
 
-            //claimCost = heroes.getHeroEffect(dbUser, 'claim_akari', claimCost);
-            if(dbUser.exp < resp.claimCost) return fulfill(f.respFail('TOMATO_NONE'));
+    const max_claims = 20;
+    amount = Math.min(Math.max(parseInt(amount), 1), max_claims - stat.claim);
+    
+    if (amount <= 0) {
+        return f.respFail('CLAIM_CAP');
+    }
 
-            let blockClaim = dbUser.dailystats && dbUser.dailystats.claim >= 30;
-            if(blockClaim) return fulfill(f.respFail('CLAIM_CAP'));
+    //if(promo) {  }
 
-            //let guild = guilds.filter(g => g.guild_id == guildID)[0];
-            let find = {};
-            //if(guild && !any) find.collection = guild.collection;
-            //find = forge.getCardEffect(dbUser, 'claim', find)[0];
+    //let guild = guilds.filter(g => g.guild_id == guildID)[0];
+    let query = [ 
+        { $match: { } },
+        { $sample: { size: amount } } 
+    ];
+    /*
+    if(guild && !any) {
+        query[0].$match.collection = guild.collection;
+        query[0].$match.craft = {$in: [null, false]};
+    }
+    */
+    //find = forge.getCardEffect(dbUser, 'claim', find)[0];
 
-            ccollection.find(find).toArray((err, data) => {
-                let card = _.sample(data);
-                resp.card = card;
+    let cards = await (await ccollection.aggregate(query)).toArray();
+    for(let card of cards) {
+        card.isNew = (dbUser.cards 
+            && dbUser.cards.filter(c => c.name == card.name && c.collection == card.collection).length > 0);
+    }
+    resp.cards = cards;
 
-                //let heroEffect = !heroes.getHeroEffect(dbUser, 'claim', true);
-                //nextClaim = heroes.getHeroEffect(dbUser, 'claim_akari', nextClaim);
+    //let heroEffect = !heroes.getHeroEffect(dbUser, 'claim', true);
 
-                resp.newCard = (dbUser.cards 
-                    && dbUser.cards.filter(c => c.name == card.name && c.collection == card.collection).length > 0)
+    if(!dbUser.cards) dbUser.cards = [];
+    cards.map(card => dbUser.cards = cardModule.addCardToUser(dbUser.cards, card));
 
-                stat.claim++;
-                //heroes.addXP(dbUser, .1);
-                return ucollection.update(
-                    { discord_id: dbUser.discord_id }, {
-                        $push: {cards: card },
-                        $set: {dailystats: stat},
-                        $inc: {exp: -claimCost}
-                }).then(() => {
-                    fulfill(f.respPass(resp));
-                    //quest.checkClaim(dbUser, (mes)=>{callback(mes)});
-                });
-            });
-        });
+    stat.claim += amount;
+    
+    //heroes.addXP(dbUser, .5 * amount);
+    await ucollection.update(
+        { discord_id: dbUser.discord_id }, {
+            $set: {cards: dbUser.cards, dailystats: stat},
+            $inc: {exp: -claimCost}
     });
+    return f.respPass(resp);
+    //quest.checkClaim(dbUser, (mes)=>{callback(mes)});
 }

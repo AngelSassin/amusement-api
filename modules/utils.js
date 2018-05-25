@@ -10,6 +10,8 @@ module.exports = {
     getHoursDifference,
     getFullTimeDifference,
     getCardFile,
+    containsCard,
+    cardsMatch,
     getBestCardSorted,
     getRandomCard,
     countCardLevels,
@@ -94,6 +96,16 @@ function getCardFile(card) {
     let ext = card.animated? '.gif' : (card.compressed? '.jpg' : '.png');
     let prefix = card.craft? card.level + 'cr' : card.level;
     return config.cards + card.collection + '/' + prefix + "_" + card.name + ext;
+}
+
+function containsCard(array, card) {
+    return array.filter(c => cardsMatch(c, card))[0];
+}
+
+function cardsMatch(card1, card2) {
+    return (card1.name.toLowerCase() === card2.name.toLowerCase() && 
+            card1.collection === card2.collection && 
+            card1.level === card2.level);
 }
 
 function getRequestFromFiltersWithPrefix(args, prefix) {

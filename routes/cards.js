@@ -1,5 +1,5 @@
 module.exports = {
-    connect, difference, summon, transfer, sell
+    connect, difference, summon, transfer, sell, addCardToUser
 }
 
 const userModule = require('./user');
@@ -32,6 +32,16 @@ function getUserCards(userID, query) {
             cards: {"$push": "$cards"}}
         }
     ]);
+}
+
+function addCardToUser(usercards, card) {
+    var usercard = utils.containsCard(usercards, card);
+    if(usercard) usercard.amount = (usercard.amount? usercard.amount + 1 : 2);
+    else {
+        card.amount = 1;
+        usercards.push(card);
+    }
+    return usercards;
 }
 
 function difference(discordID1, discordID2, filters) {
