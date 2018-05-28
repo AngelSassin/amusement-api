@@ -10,6 +10,7 @@ module.exports = {
     getHoursDifference,
     getFullTimeDifference,
     getCardFile,
+    getCardURL,
     containsCard,
     cardsMatch,
     getBestCardSorted,
@@ -20,6 +21,7 @@ module.exports = {
     getRequestFromFiltersWithPrefix,
 }
 
+const collections = require("../routes/collections");
 const config = require("../settings/conf");
 const _ = require('lodash');
 const lev = require('js-levenshtein');
@@ -92,10 +94,26 @@ function getFullTimeDifference(tg) {
 }
 
 function getCardFile(card) {
-    let name = toTitleCase(card.name.replace(/_/g, " "));
     let ext = card.animated? '.gif' : (card.compressed? '.jpg' : '.png');
     let prefix = card.craft? card.level + 'cr' : card.level;
-    return config.cards + card.collection + '/' + prefix + "_" + card.name + ext;
+    let col = collections.filter(c => c.includes(card.collection))[0];
+    return './cards/' + col + '/' + prefix + "_" + card.name + ext;
+}
+
+function getCardURL(card) {
+    // if(card.animated && card.imgur) 
+    //     return "https://i.imgur.com/" + card.imgur + ".gifv";
+
+    let ext = card.animated? '.gif' : '.png';
+    let prefix = card.craft? card.level + 'cr' : card.level;
+    let col = collections.getByID(card.collection);
+    if(!col) return "";
+
+    let path = col.special? '/promo/' : '/cards/';
+    if(!card.animated && col.compressed) ext = '.jpg';
+
+    return "https://amusementclub.nyc3.digitaloceanspaces.com" 
+        + path + col.id + '/' + prefix + "_" + card.name.toLowerCase() + ext;
 }
 
 function containsCard(array, card) {

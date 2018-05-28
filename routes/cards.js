@@ -78,7 +78,8 @@ function summon(discordID, args) {
         let cards = objs[0].cards;
         let dbUser = objs[0]._id;
         let match = query['cards.name']? utils.getBestCardSorted(cards, query['cards.name']) : utils.getRandomCard(cards);
-        if(!match) return callback(utils.formatError(user, "Can't find card", "can't find card matching that request"));
+        if(!match) return fulfill(f.respFail('CARD_NOMATCH'));
+        match.imageURL = utils.getCardURL(match);
 
         let stat = dbUser.dailystats;
         if(!stat) stat = {summon:0, send: 0, claim: 0, quests: 0};
@@ -86,7 +87,7 @@ function summon(discordID, args) {
 
         //heroes.addXP(dbUser, .1);
         await ucollection.update({ discord_id: dbUser.id }, {$set: {dailystats: stat}});
-        fulfill(f.respPass(cards[0]));
+        fulfill(f.respPass(match));
         //quest.checkSummon(dbUser, (mes)=>{callback(mes)});
     });
 }

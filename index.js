@@ -10,6 +10,7 @@ const port = 700;
 
 const userManager = require('./routes/user');
 const cardManager = require('./routes/cards');
+const collectionManager = require('./routes/collections');
 const f = require("./modules/formatter");
 
 var url = 'mongodb://localhost:27017/amusement'
@@ -19,6 +20,7 @@ MongoClient.connect(url).then(db => {
 
     userManager.connect(db);
     cardManager.connect(db);
+    collectionManager.connect(db);
 
 }).catch(err => { console.log("[ERR] Can't connect to DB!\n" + err) });
 

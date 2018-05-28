@@ -252,6 +252,7 @@ async function claim(discordID, amount, any, promo) {
     for(let card of cards) {
         card.isNew = (dbUser.cards 
             && dbUser.cards.filter(c => c.name == card.name && c.collection == card.collection).length > 0);
+        card.imageURL = utils.getCardURL(card);
     }
     resp.cards = cards;
 
