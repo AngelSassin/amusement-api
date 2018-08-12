@@ -10,6 +10,10 @@ const port = 700;
 
 const userManager = require('./routes/user');
 const cardManager = require('./routes/cards');
+const leadManager = require('./routes/lead');
+const general = require('./routes/general');
+const collections = require("./modules/collections");
+const stats = require("./modules/stats");
 const f = require("./modules/formatter");
 
 var url = 'mongodb://localhost:27017/amusement'
@@ -19,6 +23,10 @@ MongoClient.connect(url).then(db => {
 
     userManager.connect(db);
     cardManager.connect(db);
+    leadManager.connect(db);
+    general.connect(db);
+    collections.connect(db);
+    stats.connect(db);
 
 }).catch(err => { console.log("[ERR] Can't connect to DB!\n" + err) });
 
@@ -32,6 +40,13 @@ app.get('/', (req, resp) => {
     resp.send('Amusement Club API service v1.0');
 });
 
+app.get('/getindex', (req, resp) => {
+    console.log('GET /getindex');
+    general.getIndex().then(c => {
+        resp.send(c);
+    }).catch(e => resp.send(f.error(e)));
+});
+
 app.get('/user', (req, resp) => {
     let p = req.query;
     console.log('GET /user ' + p.uid);
@@ -43,7 +58,7 @@ app.get('/user', (req, resp) => {
 app.get('/user/claim', (req, resp) => {
     let p = req.query;
     console.log('GET /user/claim ' + p);
-    userManager.claim(p.uid. p.amount).then((obj) => {
+    userManager.claim(p.uid, p.amount).then((obj) => {
         resp.send(obj);
     }).catch(e => resp.send(f.error(e)));
 });
@@ -104,6 +119,14 @@ app.get('/user/update', (req, resp) => {
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
 });
 
+app.get('/card', (req, resp) => {
+    let p = req.query;
+    console.log('GET /card ' + p);
+    cardManager.find(p.uid, p.card).then((obj) => {
+        resp.send(obj);
+    }).catch(e => {resp.send(f.error(e)); console.log(e)});
+});
+
 app.get('/card/summon', (req, resp) => {
     let p = req.query;
     console.log('GET /card/summon ' + p);
@@ -115,7 +138,7 @@ app.get('/card/summon', (req, resp) => {
 app.get('/card/diff', (req, resp) => {
     let p = req.query;
     console.log('GET /card/diff ' + p);
-    cardManager.difference(p.uid, p.toid, p.card).then((obj) => {
+    cardManager.difference(p.uid, p.toid).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
 });
@@ -132,6 +155,14 @@ app.get('/card/send', (req, resp) => {
     let p = req.query;
     console.log('GET /card/send ' + p);
     cardManager.transfer(p.uid, p.toid, p.card).then((obj) => {
+        resp.send(obj);
+    }).catch(e => {resp.send(f.error(e)); console.log(e)});
+});
+
+app.get('/lead', (req, resp) => {
+    let p = req.query;
+    console.log('GET /lead ' + p);
+    leadManager.getLeaders(p.uid).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
 });

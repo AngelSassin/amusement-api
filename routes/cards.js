@@ -1,7 +1,3 @@
-module.exports = {
-    connect, difference, summon, transfer, sell
-}
-
 const userModule = require('./user');
 const f = require("../modules/formatter");
 const utils = require("../modules/utils");
@@ -144,4 +140,22 @@ function sell(discordID, cardName) {
             } else fulfill(f.respFail('CARD_NOMATCH'));
         }).catch(e => reject(e));
     });
+}
+
+function find(discordID, cardName) {
+    return new Promise((fulfill, reject) => {
+        var re = new RegExp(cardName,"i");
+        ccollection.find({name:re}).toArray((err, cards) => {
+            if(err) return reject(err);
+
+            if(cards.length == 0) return fulfill(f.respFail('CARD_NOMATCH'));
+            console.log(cardName);
+
+            fulfill(f.respPass(cards));
+        });
+    });
+}
+
+module.exports = {
+    connect, difference, summon, transfer, sell, find
 }

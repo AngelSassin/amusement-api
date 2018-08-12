@@ -1,22 +1,35 @@
 module.exports = {
-    isInt,
     getRegexString,
     parseToSeconds,
     msToTime,
     HEXToVBColor,
     getSourceFormat,
     toTitleCase,
+    getSecondsDifference,
     getMinutesDifference,
     getHoursDifference,
+    getDaysDifference,
     getFullTimeDifference,
+    isInt,
+    sortByStars,
+    containsCard,
+    cardsMatch,
+    getRequestFromFilters,
+    getRequestFromFiltersNoPrefix,
+    getRequestFromFiltersWithPrefix,
+    getUserID,
+    getCardQuery,
+    generateRandomId,
+    generateNextId,
+    getFullCard,
+    getCardName,
     getCardFile,
-    getBestCardSorted,
-    countCardLevels
+    getCardURL
 }
 
-const config = require("../settings/conf");
-const _ = require('lodash');
-const lev = require('js-levenshtein');
+const fs = require('fs');
+const collections = require('./collections');
+const conf = require('../settings/conf');
 
 function getSourceFormat(str) {
     return str.replace(' ', '');
@@ -34,6 +47,8 @@ function _formatSymbols(word) {
     return word 
         .replace('.', '\\.')
         .replace('?', '\\?')
+        .replace(']', '')
+        .replace('[', '')
         .replace('_', ' ');
 }
 
@@ -55,19 +70,24 @@ function toTitleCase(str) {
 
 function msToTime(s) {
 
-    function pad(n, z) {
-      z = z || 2;
-      return ('00' + n).slice(-z);
-    }
+  function pad(n, z) {
+    z = z || 2;
+    return ('00' + n).slice(-z);
+  }
 
-    var ms = s % 1000;
-    s = (s - ms) / 1000;
-    var secs = s % 60;
-    s = (s - secs) / 60;
-    var mins = s % 60;
-    var hrs = (s - mins) / 60;
+  var ms = s % 1000;
+  s = (s - ms) / 1000;
+  var secs = s % 60;
+  s = (s - secs) / 60;
+  var mins = s % 60;
+  var hrs = (s - mins) / 60;
 
-    return pad(hrs) + ':' + pad(mins) + ':' + pad(secs) + '.' + pad(ms, 3);
+  return pad(hrs) + ':' + pad(mins) + ':' + pad(secs) + '.' + pad(ms, 3);
+}
+
+function getDaysDifference(tg) {
+    let mil = new Date() - tg;
+    return Math.floor(mil / (1000*60*60*24));
 }
 
 function getHoursDifference(tg) {
@@ -80,48 +100,14 @@ function getMinutesDifference(tg) {
     return Math.floor(mil / (1000*60));
 }
 
+function getSecondsDifference(tg) {
+    let mil = new Date() - tg;
+    return Math.floor(mil / (1000));
+}
+
 function getFullTimeDifference(tg) {
     let mil = new Date() - tg;
     return msToTime(mil);
-}
-
-function getCardFile(card) {
-    let name = toTitleCase(card.name.replace(/_/g, " "));
-    let ext = card.animated? '.gif' : (card.compressed? '.jpg' : '.png');
-    let prefix = card.craft? card.level + 'cr' : card.level;
-    return config.cards + card.collection + '/' + prefix + "_" + card.name + ext;
-}
-
-function getBestCardSorted(cards, name) {
-    let filtered = cards.filter(c => _.includes(c.name.toLowerCase(), name));
-    filtered.sort((a, b) => {
-        let dist1 = lev(a, name);
-        let dist2 = lev(b, name);
-        if(dist1 < dist2) return 1;
-        if(dist1 > dist2) return -1;
-        else return 0;
-    });
-
-    var re = new RegExp('^' + name);
-    let supermatch = filtered.filter(c => re.exec(c.name.toLowerCase()));
-    if(supermatch.length > 0) { 
-        let left = filtered.filter(c => !supermatch.includes(c));
-        return supermatch.concat(left);
-    }
-    return filtered;
-}
-
-function countCardLevels(cards) {
-    let sum = 0;
-    let metCards = [];
-    if(!cards) return 0;
-    cards.forEach(function(element) {
-        if(!metCards.includes(element.name)) {
-            sum += element.level;
-            metCards.push(element.name);
-        }
-    }, this);
-    return sum;
 }
 
 function isInt(value) {
@@ -129,3 +115,209 @@ function isInt(value) {
         parseInt(Number(value)) == value && 
         !isNaN(parseInt(value, 10));
 }
+
+function sortByStars(cards) {
+    cards.sort((a, b) => {
+        let match1 = a.name.match(/★/g);
+        let match2 = b.name.match(/★/g);
+
+        if(!match1) return 1;
+        if(!match2) return -1;
+        if(match1 < match2) return 1;
+        if(match1 > match2) return -1;
+        return 0;
+    });
+    return cards;
+}
+
+function getRequestFromFiltersWithPrefix(args, prefix) {
+    prefix = prefix || "";
+    let query = {};
+    let keywords = [];
+    let levelInclude = [];
+    let levelExclude = [];
+    let collectionInclude = [];
+    let collectionExclude = [];
+
+    //console.log(args);
+    if(!args || args.length == 0) return {};
+    args.forEach(element => {
+        element = element.trim();
+        if(isInt(element) && parseInt(element) <= 5 && parseInt(element) > 0)
+            levelInclude.push(parseInt(element));
+
+        else if(element[0] == '-') {
+            let el = element.substr(1);
+            if(el === "craft") query[prefix + 'craft'] = true; 
+            else if(el === "multi") query[prefix + 'amount'] = {$gte: 2};
+            else if(el === "gif") query[prefix + 'animated'] = true;
+            else if(el === "fav") query[prefix + 'fav'] = true;
+            else if(el === "frozen") {
+                var yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                query[prefix + 'frozen'] = {$gte: yesterday};
+            }
+            else {
+                col = collections.parseCollection(el);
+                col.map(c => collectionInclude.push(c.id));
+            }
+        }
+        else if(element[0] == '!') {
+            let el = element.substr(1);
+            if(isInt(el) && parseInt(el) <= 5 && parseInt(el) > 0)
+                levelExclude.push(parseInt(el));
+            if(el === "craft") query[prefix + 'craft'] = false; 
+            else if(el === "multi") query[prefix + 'amount'] = {$eq: 1};
+            else if(el === "gif") query[prefix + 'animated'] = false;
+            else if(el === "fav") query[prefix + 'fav'] = {$in: [null, false]};
+            else if(el === "frozen") {
+                var yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                query[prefix + 'frozen'] = {$lte: yesterday};
+            }
+            else {
+                col = collections.parseCollection(el);
+                col.map(c => collectionExclude.push(c.id));
+            }
+
+        } else keywords.push(element.trim());
+    }, this);
+    if(levelExclude.length > 0 || levelInclude.length > 0) {
+        query[prefix + 'level'] = {};
+        if(levelExclude.length > 0) {
+            query[prefix + 'level'].$nin = levelExclude;
+        }
+        if(levelInclude.length > 0) {
+            query[prefix + 'level'].$in = levelInclude;
+        }
+    }
+    
+    if(collectionExclude.length > 0 || collectionInclude.length > 0) {
+        query[prefix + 'collection'] = {};
+        if(collectionExclude.length > 0) {
+            query[prefix + 'collection'].$nin = collectionExclude;
+        }
+        if(collectionInclude.length > 0) {
+            query[prefix + 'collection'].$in = collectionInclude;
+        }
+    }
+
+    if(keywords.length > 0) {
+        let keywordString = keywords.join('_').replace(/\\/g, '');
+        query[prefix + 'name'] = new RegExp("(_|^)" + keywordString, 'ig');
+    } 
+
+    return query;
+}
+
+function getRequestFromFilters(args) {
+    return getRequestFromFiltersWithPrefix(args, "cards.");
+}
+
+function getRequestFromFiltersNoPrefix(args) {
+    return getRequestFromFiltersWithPrefix(args, "");
+}
+
+function getCardQuery(card) {
+    return {
+        name: new RegExp('^' + card.name + '$', 'i'),
+        collection: card.collection,
+        level: card.level
+    }
+}
+
+function containsCard(array, card) {
+    return array.filter(c => cardsMatch(c, card))[0];
+}
+
+function cardsMatch(card1, card2) {
+    return (card1.name.toLowerCase() === card2.name.toLowerCase() && 
+            card1.collection === card2.collection && 
+            card1.level === card2.level);
+}
+
+function getUserID(inp) {
+    let ret = { };
+    for (var i = 0; i < inp.length; i++) {
+        try {
+            if (/^\d+$/.test(inp[i]) && inp[i] > (1000 * 60 * 60 * 24 * 30 * 2 ** 22)){
+                ret.id = inp[i];
+                inp.splice(i, 1);
+                break;
+            }
+            else {
+                ret.id = inp[i].slice(0, -1).split('@')[1].replace('!', '');
+                inp.splice(i, 1);
+                break;
+            }
+        }
+        catch(err) {continue}
+    }
+    ret.input = inp;
+    return ret;
+}
+
+function generateRandomId() {
+    return (Date.now().toString(36).substr(2, 3) + Math.random().toString(36).substr(2, 5));
+}
+
+function generateNextId(last) {
+    var num = parseInt(last, 36);
+    num += Math.pow(77, 4);
+    num %= Math.pow(36, 5);
+    return next = num.toString(36);
+}
+
+function getCardName(card) {
+    return toTitleCase(card.name.replace(/_/g, " "));
+}
+
+function getFullCard(card) {
+    let res = "[";
+
+    if(card.collection == "halloween") res += "H";
+    else if(card.collection == "valentine") res += "V";
+    else if(card.collection == "birthday") res += "`🍰`";
+    else {
+        for(let i=0; i<parseInt(card.level); i++)
+            res += "★"; 
+    }
+    res += "]  ";
+    if(card.fav) res += "`❤` "
+    if(card.craft) res += "[craft]  ";
+    //if(card.collection == "christmas") res += "[xmas]  ";
+    res += getCardName(card);
+    res += " `[" + card.collection + "]`";
+    return res;
+}
+
+function getCardFile(card) {
+    let ext = card.animated? '.gif' : (card.compressed? '.jpg' : '.png');
+    let prefix = card.craft? card.level + 'cr' : card.level;
+    let col = collections.filter(c => c.includes(card.collection))[0];
+    return './cards/' + col + '/' + prefix + "_" + card.name + ext;
+}
+
+function getCardURL(card, useGifv = true) {
+    if(useGifv && card.animated && card.imgur) 
+        return "https://i.imgur.com/" + card.imgur + ".gifv";
+
+    let ext = card.animated? '.gif' : '.png';
+    let prefix = card.craft? card.level + 'cr' : card.level;
+    let col = collections.getByID(card.collection);
+    if(!col) return "";
+
+    let path = col.special? '/promo/' : '/cards/';
+    if(!card.animated && col.compressed) ext = '.jpg';
+
+    return conf.cardurl
+        + path + col.id + '/' + prefix + "_" + card.name.toLowerCase() + ext;
+}
+
+// db.getCollection('users').aggregate([
+// {"$match":{"discord_id":"218871036962275338"}},
+// {"$unwind":"$cards"},
+// {"$match":{"cards.level":3, "cards.name":/illya/i}},
+// {"$group": {_id: 0, cards: {"$push": "$cards"}}},
+// {"$project": {cards: '$cards', _id: 0}}
+// ])

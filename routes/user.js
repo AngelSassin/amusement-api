@@ -171,7 +171,8 @@ function award(discordID, amount) {
 function whohas(discordID, cardName) {
     return getUser(discordID).then(dbUser => {
         return new Promise((fulfill, reject) => {
-            ccollection.find({}).toArray((err, cards) => {
+            var re = new RegExp(cardName,"i");
+            ccollection.find({name:re}).toArray((err, cards) => {
                 if(err) return reject(err);
 
                 let match = utils.getBestCardSorted(cards, cardName)[0];
@@ -195,12 +196,12 @@ function whohas(discordID, cardName) {
 }
 
 function claim(discordID, amount) {
-    //return new Promise((fulfill, reject) => {
     return getUser(discordID).then(dbUser => {
         return new Promise((fulfill, reject) => {
             let stat = dbUser.dailystats;
-            let claimCost = (stat.claim + 1) * constants.claim_incr;
             if(!stat) stat = {summon:0, send: 0, claim: 0, quests: 0};
+            let claimCost = (stat.claim + 1) * constants.claim_incr;
+            
             let resp = {
                 claimCost: claimCost,
                 nextClaim: claimCost + constants.claim_incr,
