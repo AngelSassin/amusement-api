@@ -40,11 +40,10 @@ app.get('/', (req, resp) => {
     resp.send('Amusement Club API service v1.0');
 });
 
-app.get('/getindex', (req, resp) => {
+app.get('/getindex', async (req, resp) => {
     console.log('GET /getindex');
-    general.getIndex().then(c => {
-        resp.send(c);
-    }).catch(e => resp.send(f.error(e)));
+    let c = await general.getIndex();
+    resp.send(c);
 });
 
 app.get('/user', (req, resp) => {
