@@ -8,6 +8,7 @@ function connect(connection) {
     ucollection = mongodb.collection('users');
     ccollection = mongodb.collection('cards');
     pcollection = mongodb.collection('promocards');
+    scollection = mongodb.collection('system');
 }
 
 function general() {
@@ -21,8 +22,9 @@ function general() {
         promises.push(pcollection.count());
         promises.push(ucollection.count({lastdaily: {$gt: lastWeek}}));
         promises.push(ucollection.count({'cards.1': {$exists: true}}));
+        promises.push(scollection.findOne({type: "stats"}));
         Promise.all(promises).then(v => {
-            stats.servers = 1200;
+            stats.servers = Object.values(v[4].guilds).reduce((a, c) => a + c);
             stats.cards = v[0] + v[1];
             stats.fandoms = collections.count(c => !c.promo);
             stats.weekly = v[2];

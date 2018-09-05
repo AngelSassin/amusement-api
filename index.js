@@ -8,22 +8,22 @@ const express = require('express');
 const app = express();
 const port = 700;
 
-const userManager = require('./routes/user');
-const cardManager = require('./routes/cards');
-const leadManager = require('./routes/lead');
+//const userManager = require('./routes/user');
+//const cardManager = require('./routes/cards');
+//const leadManager = require('./routes/lead');
 const general = require('./routes/general');
 const collections = require("./modules/collections");
 const stats = require("./modules/stats");
-const f = require("./modules/formatter");
+//const f = require("./modules/formatter");
 
 var url = 'mongodb://localhost:27017/amusement'
 MongoClient.connect(url).then(db => {
     mongodb = db;
     console.log("[OK] Connected to DB!");
 
-    userManager.connect(db);
-    cardManager.connect(db);
-    leadManager.connect(db);
+    //userManager.connect(db);
+    //cardManager.connect(db);
+    //leadManager.connect(db);
     general.connect(db);
     collections.connect(db);
     stats.connect(db);
@@ -46,7 +46,7 @@ app.get('/getindex', async (req, resp) => {
     resp.send(c);
 });
 
-app.get('/user', (req, resp) => {
+/*app.get('/user', (req, resp) => {
     let p = req.query;
     console.log('GET /user ' + p.uid);
     userManager.getUserApi(p.uid).then(u => {
@@ -164,4 +164,4 @@ app.get('/lead', (req, resp) => {
     leadManager.getLeaders(p.uid).then((obj) => {
         resp.send(obj);
     }).catch(e => {resp.send(f.error(e)); console.log(e)});
-});
+});*/
