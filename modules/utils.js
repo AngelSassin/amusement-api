@@ -310,7 +310,7 @@ function getCardURL(card, useGifv = true) {
     let path = col.special? '/promo/' : '/cards/';
     if(!card.animated && col.compressed) ext = '.jpg';
 
-    return conf.cardurl
+    return conf.cards
         + path + col.id + '/' + prefix + "_" + card.name.toLowerCase() + ext;
 }
 

@@ -6,7 +6,7 @@ const fs = require('fs');
 const _ = require('lodash');
 const express = require('express');
 const app = express();
-const port = 700;
+const port = 3001;
 
 //const userManager = require('./routes/user');
 //const cardManager = require('./routes/cards');
